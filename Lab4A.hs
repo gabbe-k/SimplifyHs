@@ -91,7 +91,8 @@ rOperEx n | n > 0 = do op <- elements [AddOp,MulOp]
 
 
 instance Arbitrary Expr
-  where arbitrary = rSingle
+  where arbitrary = do r <- choose(1,5)
+                       rOperEx r
 
 
 
