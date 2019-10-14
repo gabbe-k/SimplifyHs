@@ -7,7 +7,6 @@ import Test.QuickCheck
 
 -- Use the following simple data type for binary operators
 data BinOp = AddOp | MulOp 
-  deriving Eq
 
 --------------------------------------------------------------------------------
 -- * A1
@@ -17,19 +16,18 @@ data BinOp = AddOp | MulOp
 -- Note that since we consider expressions containing just a single variable,
 -- x, your data type should not use String or Char anywhere, since this is
 -- not needed.
-
+ 
 data Expr = N Int 
           | X Int     
           | BinOp BinOp Expr Expr
 
 e1 = BinOp AddOp (BinOp MulOp (X 5) (X 5)) (BinOp MulOp (X (-1)) (N 4))
 
-
 --------------------------------------------------------------------------------
 -- * A2
 -- Define the data type invariant that checks that exponents are never negative
 prop_Expr :: Expr -> Bool
-prop_Expr (BinOp op e2 e3) = (prop_Expr e2) && (prop_Expr e3)
+prop_Expr (BinOp op e1 e2) = (prop_Expr e1) && (prop_Expr e2)
 prop_Expr (X n)            = not(n < 0)
 prop_Expr (N n)            = True
 
@@ -40,12 +38,13 @@ prop_Expr (N n)            = True
 -- You should show x^1 as just x. 
 
 instance Show Expr where
-  show (X 1)            = "x"
-  show (X n)            = "(x^" ++ (show n) ++ ")"
-  show (N n)            = (show n)
-  show (BinOp op e2 e3) = (show e2) ++ (opString op) ++ (show e3)
-    where opString op | op == AddOp = "+"
-                      | op == MulOp = "*"
+  show (X 0)                  = "1"
+  show (X 1)                  = "x"
+  show (X n)                  = "(x^" ++ (show n) ++ ")"
+  show (N n)                  = (show n)
+  show (BinOp op e1 e2)       = (show e1) ++ (opString op) ++ (show e2)
+    where opString AddOp      = "+"
+          opString MulOp      = "*"
 
 --------------------------------------------------------------------------------
 -- * A4
@@ -58,8 +57,42 @@ instance Show Expr where
 -- which gives hints to quickCheck on possible smaller expressions that it
 -- could use to find a smaller counterexample for failing tests
 
--- instance Arbitrary Expr
---   where arbitrary = undefined
+--not final
+--maybe negative nums 
+rSingle :: Gen Expr
+rSingle = do r <- choose(0,10)
+             n <- elements[N,X]
+             return (n r)
+
+-- rSingle :: Gen Expr
+-- rSingle = do rExp <- choose(1,100)
+--              r <- choose(0,10)
+--              n <- elements[N,X]
+--              case (n == N) of
+--               True  -> (n rExp)
+--               False -> (n r)
+
+rOperEx :: Int -> Gen Expr
+rOperEx 0 = rSingle
+rOperEx n | n > 0 = do op <- elements [AddOp,MulOp]
+                       l  <- choose (0,n-1)
+                       e1 <- rOperEx l
+                       e2 <- rOperEx (n-1 - l)
+                       return (BinOp op e1 e2)
+
+             
+
+--            g <- elements[BinOp AddOp, BinOp MulOp]
+--            return (g (n r) (n2 i))
+
+-- rExpr :: Gen Expr
+-- rExpr = do 
+--            return ()
+
+
+instance Arbitrary Expr
+  where arbitrary = rSingle
+
 
 
 --------------------------------------------------------------------------------
