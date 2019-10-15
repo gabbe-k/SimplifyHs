@@ -16,10 +16,11 @@ data BinOp = AddOp | MulOp
 -- Note that since we consider expressions containing just a single variable,
 -- x, your data type should not use String or Char anywhere, since this is
 -- not needed.
- 
+
 data Expr = N Int 
           | X Int     
           | BinOp BinOp Expr Expr
+  
 
 e1 = BinOp AddOp (BinOp MulOp (X 5) (X 5)) (BinOp MulOp (X (-1)) (N 4))
 
@@ -42,6 +43,10 @@ instance Show Expr where
   show (X 1)                  = "x"
   show (X n)                  = "(x^" ++ (show n) ++ ")"
   show (N n)                  = (show n)
+  show (BinOp MulOp e1 (N 1)) = (show e1)
+  show (BinOp MulOp (N 1) e2) = (show e2)
+  show (BinOp AddOp e1 (N 0)) = (show e1)
+  show (BinOp AddOp (N 0) e2) = (show e2)
   show (BinOp op e1 e2)       = (show e1) ++ (opString op) ++ (show e2)
     where opString AddOp      = "+"
           opString MulOp      = "*"
@@ -59,18 +64,18 @@ instance Show Expr where
 
 --not final
 --maybe negative nums 
-rSingle :: Gen Expr
-rSingle = do r <- choose(0,10)
-             n <- elements[N,X]
-             return (n r)
-
 -- rSingle :: Gen Expr
--- rSingle = do rExp <- choose(1,100)
---              r <- choose(0,10)
+-- rSingle = do r <- choose(0,10)
 --              n <- elements[N,X]
---              case (n == N) of
---               True  -> (n rExp)
---               False -> (n r)
+--              return (n r)
+
+rSingle :: Gen Expr
+rSingle = do rExp <- choose(1,10)
+             r <- choose(0,100)
+             n <- elements[(X 0),(N 0)]
+             case n of
+              (X _) -> (return(X rExp))
+              (N _) -> (return (N r))
 
 rOperEx :: Int -> Gen Expr
 rOperEx 0 = rSingle
@@ -80,21 +85,8 @@ rOperEx n | n > 0 = do op <- elements [AddOp,MulOp]
                        e2 <- rOperEx (n-1 - l)
                        return (BinOp op e1 e2)
 
-             
-
---            g <- elements[BinOp AddOp, BinOp MulOp]
---            return (g (n r) (n2 i))
-
--- rExpr :: Gen Expr
--- rExpr = do 
---            return ()
-
-
-instance Arbitrary Expr
-  where arbitrary = do r <- choose(1,5)
-                       rOperEx r
-
-
+instance Arbitrary Expr where arbitrary = do r <- choose (1,3)
+                                             rOperEx r
 
 --------------------------------------------------------------------------------
 -- * A5
