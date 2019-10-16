@@ -23,7 +23,6 @@ data Expr = N Int
           | BExp BinOp Expr Expr
 
 
-e1 = BExp MulOp (BExp MulOp (X 2) (N 3)) (BExp MulOp (X 2) (N 5))
 
 --------------------------------------------------------------------------------
 -- * A2
@@ -69,7 +68,7 @@ instance Show Expr where
 --              return (n r)
 
 rSingle :: Gen Expr
-rSingle = do exp <- choose(1,10)
+rSingle = do exp <- choose(1,9)
              n <- choose(1,100)
              t <- elements[(X 0),(N 0)]
              case t of
@@ -94,35 +93,21 @@ instance Arbitrary Expr where arbitrary = do r <- choose (0,5)
 eval :: Int -> Expr -> Int
 eval x (X n)           = x ^ n 
 eval x (N n)           = n 
-eval x (BExp op e1 e2) = (opActual op) (eval x e1) (eval x e2)
-  where opActual AddOp      = (+)
-        opActual MulOp      = (*)
+eval x (BExp op e1 e2) = (opA op) (eval x e1) (eval x e2)
+  where opA AddOp      = (+)
+        opA MulOp      = (*)
   
 --------------------------------------------------------------------------------
 -- * A6
 -- Define
 exprToPoly :: Expr -> Poly
--- Which converts an expression into a polynomial.
--- Here it is important to think recursively to just solve the bigger problem
--- by solving the smaller problems and combining them in the right way. 
+e1 = (BExp MulOp (BExp MulOp (X 5) (N 3)) (BExp MulOp (X 2) (N 5)))
 
-
--- exprToPoly (BExp op (X n1) (X n2)) | n1 < n2 = exprToPoly (X n2) (X n1)
---                                    | otherwise = exprToPoly (X n1) (X n2) 
 exprToPoly (N n)                      = fromList [n]
 exprToPoly (X n)                      = fromList (1 : replicate n 0)
-exprToPoly (BExp MulOp (X exp) (N n)) = fromList (n : replicate exp 0)
-exprToPoly (BExp MulOp (N n) (X exp)) = fromList (n : replicate exp 0)
-exprToPoly (BExp op (N n) (N n2))     = fromList [(opActual op) n n2] 
-  where opActual AddOp                = (+)
-        opActual MulOp                = (*)
-exprToPoly (BExp op (X n) (X n2))     | op == MulOp = exprToPoly (X (n+n2))
-                                      | otherwise   = 
-                                        fromList( 1 : ((replicate (deltaExp - 1) 0) ++ [1] 
-                                        ++ (replicate (n2-(deltaExp)) 0)) )
-  where deltaExp | n > n2    = n - n2
-                 | otherwise = n2 - n
-
+exprToPoly (BExp AddOp e1 e2)         = (exprToPoly e1) + (exprToPoly e2)
+exprToPoly (BExp MulOp e1 e2)         = (exprToPoly e1) * (exprToPoly e2)
+        
 -- Define (and check) prop_exprToPoly, which checks that evaluating the
 -- polynomial you get from exprToPoly gives the same answer as evaluating
 -- the expression
