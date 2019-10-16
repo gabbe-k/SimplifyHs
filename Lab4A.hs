@@ -7,6 +7,7 @@ import Test.QuickCheck
 
 -- Use the following simple data type for binary operators
 data BinOp = AddOp | MulOp 
+  deriving Eq
 
 --------------------------------------------------------------------------------
 -- * A1
@@ -19,16 +20,16 @@ data BinOp = AddOp | MulOp
 
 data Expr = N Int 
           | X Int     
-          | BinOp BinOp Expr Expr
-  
+          | BExp BinOp Expr Expr
 
-e1 = BinOp AddOp (BinOp MulOp (X 5) (X 5)) (BinOp MulOp (X (-1)) (N 4))
+
+e1 = BExp MulOp (BExp MulOp (X 2) (N 3)) (BExp MulOp (X 2) (N 5))
 
 --------------------------------------------------------------------------------
 -- * A2
 -- Define the data type invariant that checks that exponents are never negative
 prop_Expr :: Expr -> Bool
-prop_Expr (BinOp op e1 e2) = (prop_Expr e1) && (prop_Expr e2)
+prop_Expr (BExp op e1 e2) = (prop_Expr e1) && (prop_Expr e2)
 prop_Expr (X n)            = not(n < 0)
 prop_Expr (N n)            = True
 
@@ -43,11 +44,9 @@ instance Show Expr where
   show (X 1)                  = "x"
   show (X n)                  = "(x^" ++ (show n) ++ ")"
   show (N n)                  = (show n)
-  show (BinOp MulOp e1 (N 1)) = (show e1)
-  show (BinOp MulOp (N 1) e2) = (show e2)
-  show (BinOp AddOp e1 (N 0)) = (show e1)
-  show (BinOp AddOp (N 0) e2) = (show e2)
-  show (BinOp op e1 e2)       = (show e1) ++ (opString op) ++ (show e2)
+  show (BExp MulOp e1 (N 1)) = (show e1)
+  show (BExp MulOp (N 1) e2) = (show e2)
+  show (BExp op e1 e2)       = (show e1) ++ (opString op) ++ (show e2)
     where opString AddOp      = "+"
           opString MulOp      = "*"
 
@@ -70,22 +69,21 @@ instance Show Expr where
 --              return (n r)
 
 rSingle :: Gen Expr
-rSingle = do rExp <- choose(1,10)
-             r <- choose(0,100)
-             n <- elements[(X 0),(N 0)]
-             case n of
-              (X _) -> (return(X rExp))
-              (N _) -> (return (N r))
+rSingle = do exp <- choose(1,10)
+             n <- choose(1,100)
+             t <- elements[(X 0),(N 0)]
+             case t of
+              (X _) -> (return(X exp))
+              (N _) -> (return (N n))
 
 rOperEx :: Int -> Gen Expr
 rOperEx 0 = rSingle
 rOperEx n | n > 0 = do op <- elements [AddOp,MulOp]
-                       l  <- choose (0,n-1)
-                       e1 <- rOperEx l
-                       e2 <- rOperEx (n-1 - l)
-                       return (BinOp op e1 e2)
+                       e1 <- rSingle
+                       e2 <- (rOperEx (n-1))
+                       return(BExp op e1 e2)
 
-instance Arbitrary Expr where arbitrary = do r <- choose (1,3)
+instance Arbitrary Expr where arbitrary = do r <- choose (0,5)
                                              rOperEx r
 
 --------------------------------------------------------------------------------
@@ -94,9 +92,12 @@ instance Arbitrary Expr where arbitrary = do r <- choose (1,3)
 -- evaluates it
 
 eval :: Int -> Expr -> Int
-eval = undefined
-
-
+eval x (X n)           = x ^ n 
+eval x (N n)           = n 
+eval x (BExp op e1 e2) = (opActual op) (eval x e1) (eval x e2)
+  where opActual AddOp      = (+)
+        opActual MulOp      = (*)
+  
 --------------------------------------------------------------------------------
 -- * A6
 -- Define
@@ -105,7 +106,22 @@ exprToPoly :: Expr -> Poly
 -- Here it is important to think recursively to just solve the bigger problem
 -- by solving the smaller problems and combining them in the right way. 
 
-exprToPoly = undefined
+
+-- exprToPoly (BExp op (X n1) (X n2)) | n1 < n2 = exprToPoly (X n2) (X n1)
+--                                    | otherwise = exprToPoly (X n1) (X n2) 
+exprToPoly (N n)                      = fromList [n]
+exprToPoly (X n)                      = fromList (1 : replicate n 0)
+exprToPoly (BExp MulOp (X exp) (N n)) = fromList (n : replicate exp 0)
+exprToPoly (BExp MulOp (N n) (X exp)) = fromList (n : replicate exp 0)
+exprToPoly (BExp op (N n) (N n2))     = fromList [(opActual op) n n2] 
+  where opActual AddOp                = (+)
+        opActual MulOp                = (*)
+exprToPoly (BExp op (X n) (X n2))     | op == MulOp = exprToPoly (X (n+n2))
+                                      | otherwise   = 
+                                        fromList( 1 : ((replicate (deltaExp - 1) 0) ++ [1] 
+                                        ++ (replicate (n2-(deltaExp)) 0)) )
+  where deltaExp | n > n2    = n - n2
+                 | otherwise = n2 - n
 
 -- Define (and check) prop_exprToPoly, which checks that evaluating the
 -- polynomial you get from exprToPoly gives the same answer as evaluating
