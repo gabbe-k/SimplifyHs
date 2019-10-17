@@ -43,9 +43,11 @@ instance Show Expr where
   show (X 1)                  = "x"
   show (X n)                  = "(x^" ++ (show n) ++ ")"
   show (N n)                  = (show n)
-  show (BExp MulOp e1 (N 1)) = (show e1)
-  show (BExp MulOp (N 1) e2) = (show e2)
-  show (BExp op e1 e2)       = (show e1) ++ (opString op) ++ (show e2)
+  show (BExp AddOp e1 (N 0))  = (show e1)
+  show (BExp AddOp (N 0) e2)  = (show e2)
+  show (BExp MulOp e1 (N 1))  = (show e1)
+  show (BExp MulOp (N 1) e2)  = (show e2)
+  show (BExp op e1 e2)        = (show e1) ++ (opString op) ++ (show e2)
     where opString AddOp      = "+"
           opString MulOp      = "*"
 
@@ -101,7 +103,7 @@ eval x (BExp op e1 e2) = (opA op) (eval x e1) (eval x e2)
 -- * A6
 -- Define
 exprToPoly :: Expr -> Poly
-e1 = (BExp MulOp (BExp MulOp (X 5) (N 3)) (BExp MulOp (X 2) (N 5)))
+e1 = (BExp AddOp (BExp MulOp (X 3) (N 3)) (BExp MulOp (X 3) (N 5)))
 
 exprToPoly (N n)                      = fromList [n]
 exprToPoly (X n)                      = fromList (1 : replicate n 0)
@@ -112,19 +114,24 @@ exprToPoly (BExp MulOp e1 e2)         = (exprToPoly e1) * (exprToPoly e2)
 -- polynomial you get from exprToPoly gives the same answer as evaluating
 -- the expression
 
-prop_exprToPoly = undefined
+prop_exprToPoly :: Expr -> Int -> Bool
+prop_exprToPoly e x = (eval x e) == evalPoly x (exprToPoly e)
 
 --------------------------------------------------------------------------------
 -- * A7
 -- Now define the function going in the other direction, 
 polyToExpr :: Poly -> Expr
-
-polyToExpr = undefined
+polyToExpr p | (length lP) <= 1   = eld
+             | (length lP) > 1    = (BExp AddOp (eld) (polyToExpr (fromList (drop 1 lP))))
+  where
+      lP = (toList p)
+      eld | (length lP) == 0 = N 0
+          | otherwise = (BExp MulOp (X ((length lP) - 1)) (N (head lP)))
 
 
 -- Write (and check) a quickCheck property for this function similar to
 -- question 6. 
-prop_polyToExpr = undefined
+prop_polyToExpr x p = (eval x (polyToExpr p)) == (evalPoly x p)
 
 --------------------------------------------------------------------------------
 -- * A8
@@ -132,7 +139,7 @@ prop_polyToExpr = undefined
 simplify :: Expr -> Expr
 -- which simplifies an expression by converting it to a polynomial
 -- and back again
-simplify = undefined
+simplify e = polyToExpr(exprToPoly e)
 
 --------------------------------------------------------------------------------
 -- * A9
@@ -143,7 +150,5 @@ prop_noJunk :: Expr -> Bool
 --where junk is defined to be multiplication by one or zero,
 --addition of zero, addition or multiplication of numbers, or x to the
 --power zero. (You may need to fix A7)
-
-prop_noJunk = undefined
 
 --------------------------------------------------------------------------------
