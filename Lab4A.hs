@@ -119,13 +119,14 @@ prop_exprToPoly e x = (eval x e) == evalPoly x (exprToPoly e)
 -- * A7
 -- Now define the function going in the other direction, 
 polyToExpr :: Poly -> Expr
-polyToExpr p | (or [ t == 0 | t <- (drop 1 lP)])  = sPoly
-             | length(lP) > 1                     = (BExp AddOp (sPoly) (polyToExpr (fromList (drop 1 lP))))
+polyToExpr p | hasZero        = sPoly
+             | length(lP) > 1 = (BExp AddOp sPoly polList)
   where
-      lP = (toList p)
-      sPoly | (length lP) == 0 = N 0
-          | otherwise = (BExp MulOp (X ((length lP) - 1)) (N (head lP)))
-
+      lP       = (toList p)      
+      hasZero  = (or [ t == 0 | t <- (drop 1 lP)])
+      sPoly    | (length lP) == 0 = (N 0)
+               | otherwise = (BExp MulOp (X ((length lP) - 1)) (N (head lP)))
+      polList  = (polyToExpr (fromList (drop 1 lP)))
 
 -- Write (and check) a quickCheck property for this function similar to
 -- question 6. 
@@ -133,10 +134,10 @@ prop_polyToExpr x p = (eval x (polyToExpr p)) == (evalPoly x p)
 
 --------------------------------------------------------------------------------
 -- * A8
--- Write a function
-simplify :: Expr -> Expr
--- which simplifies an expression by converting it to a polynomial
+-- A function
+-- that simplifies an expression by converting it to a polynomial
 -- and back again
+simplify :: Expr -> Expr
 simplify e = polyToExpr(exprToPoly e)
 
 --------------------------------------------------------------------------------
@@ -145,14 +146,16 @@ e1 = (BExp AddOp (BExp MulOp (X 3) (N 3)) (BExp MulOp (X 3) (N 5)))
 -- * A9
 -- Write a quickCheck property
 prop_noJunk :: Expr -> Bool
-prop_noJunk (N 0)                = False
-prop_noJunk (N _)                = True
-prop_noJunk (X _)                = True
-prop_noJunk (BExp AddOp (N 0) _) = False
-prop_noJunk (BExp AddOp _ (N 0)) = False
-prop_noJunk (BExp MulOp (N 1) _) = False
-prop_noJunk (BExp MulOp _ (N 1)) = False
-prop_noJunk (BExp op e1 e2)      = (prop_noJunk e1) && (prop_noJunk e2)
+prop_noJunk (N 0)                    = False
+prop_noJunk (X 0)                    = False
+prop_noJunk (N _)                    = True
+prop_noJunk (X _)                    = True
+prop_noJunk (BExp AddOp (N 0) _)     = False
+prop_noJunk (BExp AddOp _ (N 0))     = False
+prop_noJunk (BExp MulOp (N 1) _)     = False
+prop_noJunk (BExp MulOp _ (N 1))     = False
+prop_noJunk (BExp MulOp (N _) (N _)) = False --fails for this
+prop_noJunk (BExp op e1 e2)          = (prop_noJunk e1) && (prop_noJunk e2)
 --that checks that a simplified expression does not contain any "junk":
 --where junk is defined to be multiplication by one or zero,
 --addition of zero, addition or multiplication of numbers, or x to the
