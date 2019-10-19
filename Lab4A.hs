@@ -1,11 +1,11 @@
--- Authors:
--- Date:
+-- Authors: Daniel Perlkvist, Daniel Kvist, Gabriel Käll
+-- Date: 
 
 import Poly
 import Test.QuickCheck
 
 
--- Use the following simple data type for binary operators
+-- Data type for binary operators
 data BinOp = AddOp | MulOp 
   deriving Eq
 
@@ -16,8 +16,6 @@ data BinOp = AddOp | MulOp
 data Expr = N Int 
           | X Int     
           | BExp BinOp Expr Expr
-
-
 
 --------------------------------------------------------------------------------
 -- * A2
